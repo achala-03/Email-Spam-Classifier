@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Spam Detector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --secondary: #2A2D3E;
+            --bg: #1A1C29;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #ffffff;
+            --success: #00C851;
+            --danger: #ff4444;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(circle at 10% 20%, rgba(108, 99, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 68, 68, 0.05) 0%, transparent 20%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            background: linear-gradient(45deg, #fff, #aaa);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .input-group {
+            margin-bottom: 2rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: inherit;
+            resize: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+        }
+
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #result {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            min-height: 2rem;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .spam {
+            color: var(--danger);
+        }
+
+        .not-spam {
+            color: var(--success);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <h1>Public Spam Checker</h1>
+            <div class="input-group">
+                <textarea id="emailContent" placeholder="Paste your email content here..."></textarea>
+            </div>
+            <button onclick="checkSpam()" id="checkBtn">Analyze Email</button>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function checkSpam() {
+            const content = document.getElementById('emailContent').value;
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('checkBtn');
+
+            if (!content.trim()) {
+                alert("Please enter some text!");
+                return;
+            }
+
+            // UI Loading State
+            btn.innerHTML = '<div class="loading"></div>';
+            btn.disabled = true;
+            resultDiv.style.opacity = '0';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: content }),
+                });
+
+                const data = await response.json();
+
+                // Reset UI
+                btn.innerHTML = 'Analyze Email';
+                btn.disabled = false;
+                resultDiv.style.opacity = '1';
+
+                if (data.error) {
+                    resultDiv.innerHTML = `<span style="color:red">Error: ${data.error}</span>`;
+                } else {
+                    const isSpam = data.prediction === 'Spam';
+                    const colorClass = isSpam ? 'spam' : 'not-spam';
+                    const icon = isSpam ? '🚫' : '✅';
+                    resultDiv.innerHTML = `<span class="${colorClass}">${icon} ${data.prediction}</span>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                btn.innerHTML = 'Analyze Email';
+                btn.disabled = false;
+                resultDiv.style.opacity = '1';
+                resultDiv.innerHTML = '<span style="color:red">Failed to connect to server</span>';
+            }
+        }
+    </script>
+</body>
+
+</html>
